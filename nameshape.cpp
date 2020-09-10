@@ -34,7 +34,7 @@ bool Nameshape::parseCommandLine(int argc, wchar_t* argv[]) {
 		("input",     po::wvalue<std::wstring>(), "C++ regular expression (extended ECMAScript)")
 		("output",    po::wvalue<std::wstring>(), "Output format string. See below for details.")
 	;
-	
+
 	if (argc < 2) {
 		std::cout << description << std::endl;
 		std::cout << "For the most part the output file name syntax is very basic." << std::endl;
@@ -43,7 +43,7 @@ bool Nameshape::parseCommandLine(int argc, wchar_t* argv[]) {
 		std::cout << "  %(ext)        Extension of the original file name (\"test.txt\" -> \"txt\")" << std::endl;
 		std::cout << "  %(counter)    Running counter, plain" << std::endl;
 		std::cout << "  %(counter,N)  Running counter, %0Nd format" << std::endl;
-		
+
 		return false;
 	}
 
@@ -59,25 +59,25 @@ bool Nameshape::parseCommandLine(int argc, wchar_t* argv[]) {
 		this->directory = vm["directory"].as<std::wstring>();
 
 		if (!std::filesystem::is_directory(this->directory)) {
-			throw std::exception("Output path is not a directory");
+			throw std::runtime_error("Output path is not a directory");
 		}
 	}
-	
+
 	if (vm.count("input")) {
 		try {
 			this->input = std::wregex(vm["input"].as<std::wstring>());
 		} catch (std::regex_error& e) {
 			std::string message = std::string("Invalid regular expression for input: ") + e.what();
-			throw std::exception(message.c_str());
+			throw std::runtime_error(message.c_str());
 		}
 	}
-	
+
 	if (vm.count("output")) {
 		this->output = vm["output"].as<std::wstring>();
 	}
 
 	if (this->output.size() == 0) {
-		throw std::exception("Missing parameter: --output");
+		throw std::runtime_error("Missing parameter: --output");
 	}
 
 	return true;
@@ -94,7 +94,7 @@ void Nameshape::performNameshape() {
 		}
 
 		std::wstring fileName = file.path().filename().wstring();
-		
+
 		if (std::regex_match(fileName, inputResult, this->input)) {
 			fileNames.push_back(fileName);
 		}
@@ -109,16 +109,16 @@ void Nameshape::performNameshape() {
 	const std::wregex  counterRegex(L"%\\(counter(,[0-9])?\\)");
 	const std::wstring nameMatch(L"%(name)");
 	const std::wstring extMatch(L"%(ext)");
-	
+
 	std::wsmatch counterResult;
 	constexpr int maxCounterLength = 10;
-	
+
 	std::string::size_type matchPosition = std::string::npos;
 
 	for (std::vector<std::wstring>::size_type i = 0; i < fileNames.size(); ++i) {
 		std::wstring outName = this->output;
 		std::wstring inName  = fileNames[i];
-		
+
 		// Construct output file name
 		std::filesystem::path inPath = this->directory / std::filesystem::path(inName);
 
@@ -149,7 +149,7 @@ void Nameshape::performNameshape() {
 			if (numberMatch.matched) {
 				format += numberMatch.str().replace(0, 1, L"0");
 			}
-			
+
 			format += L"d";
 
 			std::swprintf(number, maxCounterLength, format.c_str(), i);
@@ -189,7 +189,7 @@ void Nameshape::performNameshape() {
 				return;
 			}
 		}
-		
+
 		// Ask for confirmation if it was requested
 		if (this->confirm) {
 			wchar_t action = L'x';
@@ -205,11 +205,11 @@ void Nameshape::performNameshape() {
 				continue;
 			}
 		}
-		
+
 		if (this->verbose) {
 			std::wcout << L"Renaming \"" << inName << L"\" to \"" << outName << L"\"" << std::endl;
 		}
-		
+
 		std::filesystem::rename(inPath, outPath);
 	}
 }
